@@ -43,6 +43,17 @@ if (NOT MOAB_USE_HDF5)
 endif()
 endif()
 
+#===============================================================================
+# MFEM
+#===============================================================================
+if (XDG_ENABLE_MFEM)
+  find_package(MFEM REQUIRED HINTS ${MFEM_DIR})
+if (NOT MFEM_FOUND)
+    message(FATAL_ERROR "MFEM package was not found")
+  endif()
+  message(STATUS "Found MFEM ${MFEM_VERSION} at ${MFEM_DIR}")
+endif()
+
 if (XDG_ENABLE_EMBREE)
   # find Embree for CPU ray tracing
 
@@ -236,6 +247,13 @@ src/moab/metadata.cpp
 )
 endif()
 
+if (XDG_ENABLE_MFEM)
+list(APPEND xdg_sources
+# MFEM
+src/mfem/mesh_manager.cpp
+)
+endif()
+
 #===============================================================================
 # RPATH information (from OpenMC)
 #===============================================================================
@@ -310,6 +328,10 @@ if (XDG_ENABLE_LIBMESH)
   target_compile_definitions(xdg PUBLIC XDG_ENABLE_LIBMESH)
 endif()
 
+if (XDG_ENABLE_MFEM)
+  target_compile_definitions(xdg PUBLIC XDG_ENABLE_MFEM)
+endif()
+
 if (XDG_ENABLE_EMBREE)
   target_compile_definitions(xdg PUBLIC XDG_ENABLE_EMBREE)
 endif()
@@ -363,6 +385,10 @@ endif()
 
 if (XDG_ENABLE_MOAB)
   target_link_libraries(xdg PRIVATE MOAB)
+endif()
+
+if (XDG_ENABLE_MFEM)
+  target_link_libraries(xdg mfem)
 endif()
 
 #=================================================================
