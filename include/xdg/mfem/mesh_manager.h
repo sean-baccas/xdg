@@ -64,7 +64,11 @@ public:
 
   // count the number of faces with the attribute "volume"
   int num_volume_faces(MeshID volume) const override {
-    fatal_error("MfemMeshManager::num_volume_faces() not implemented yet");
+    int count = 0;
+    for (auto surface : get_volume_surfaces(volume)) {
+      count += num_surface_faces(surface);
+    }
+    return count;
   }
 
   int num_surface_faces(MeshID surface) const override {

@@ -455,6 +455,44 @@ int count_misoriented_faces(const MfemMeshManager& mesh_manager) {
   return misoriented;
 }
 
+// Count the faces bounding a volume straight from MFEM's face list,
+// independently of the surfaces the mesh manager built: a face bounds a volume
+// if the volume is on one side of it and a different volume (or nothing, for
+// the implicit complement) is on the other.
+int count_bounding_faces(const MfemMeshManager& mesh_manager, MeshID volume) {
+  const mfem::Mesh* mesh = mesh_manager.mesh();
+  const MeshID ipc = mesh_manager.implicit_complement();
+  int count = 0;
+  for (int face = 0; face < mesh->GetNumFaces(); face++) {
+    int e1, e2;
+    mesh->GetFaceElements(face, &e1, &e2);
+    const MeshID vol1 = mesh->GetAttribute(e1);
+    const MeshID vol2 = e2 >= 0 ? mesh->GetAttribute(e2) : ipc;
+    if (vol1 == vol2) continue;
+    if (vol1 == volume || vol2 == volume) count++;
+  }
+  return count;
+}
+
+TEST_CASE("MFEM Volume Face Counts")
+{
+  std::string file = GENERATE("brick.exo", "brick-sidesets.exo", "cyl-brick.exo", "jezebel.exo",
+                              "pincell-implicit.exo", "cube-w-multiblock-sideset.exo");
+  CAPTURE(file);
+
+  MfemMeshManager mesh_manager;
+  mesh_manager.load_file(file);
+  mesh_manager.init();
+
+  // includes the implicit complement, whose faces are the mesh exterior
+  for (auto volume : mesh_manager.volumes()) {
+    CAPTURE(volume);
+    const int expected = count_bounding_faces(mesh_manager, volume);
+    REQUIRE(expected > 0);
+    REQUIRE(mesh_manager.num_volume_faces(volume) == expected);
+  }
+}
+
 // The volume enclosed by a volume's surfaces is only right if the surface
 // senses and face windings agree, so compare it against the sum of the
 // element volumes for every volume in the mesh.
@@ -537,6 +575,7 @@ TEST_CASE("MFEM Implicit Boundaries Pincell")
   std::vector<MeshID> expected {implicit_surfaces.at({1, 2}), implicit_surfaces.at({1, 6})};
   std::sort(expected.begin(), expected.end());
   REQUIRE(fuel_surfaces == expected);
+  REQUIRE(mesh_manager->num_volume_faces(1) == 928 + 176);
 
   REQUIRE(count_misoriented_faces(*mesh_manager) == 0);
 
@@ -583,6 +622,11 @@ TEST_CASE("MFEM Multiblock sidesets")
   // (extra parentheses: util.h's StringMaker for std::pair can't print these)
   REQUIRE((surface_summary == expected_summary));
 
+  // each volume's face count spans its sideset, implicit and interface surfaces
+  REQUIRE(mesh_manager->num_volume_faces(1) == 88 + 1368 + 1048);
+  REQUIRE(mesh_manager->num_volume_faces(2) == 214 + 214 + 1048);
+  REQUIRE(mesh_manager->num_volume_faces(ipc) == 88 + 1368 + 214 + 214);
+
   REQUIRE(count_misoriented_faces(*mesh_manager) == 0);
 
   xdg->prepare_raytracer();
@@ -621,6 +665,13 @@ TEST_CASE("MFEM Implicit Boundaries With Alternating Volumes")
     REQUIRE(interface_surfaces.size() == 1);
     const MeshID interface = interface_surfaces[0];
     REQUIRE_THAT(xdg->measure_surface_area(interface), Catch::Matchers::WithinRel(3.0, 1e-12));
+
+    // each volume has 9 unit squares on the exterior plus the 3 interfaces, and
+    // the exterior is 18 unit squares. Tet meshes split every square in two.
+    const int faces_per_square = type == mfem::Element::HEXAHEDRON ? 1 : 2;
+    REQUIRE(mesh_manager->num_volume_faces(1) == 12 * faces_per_square);
+    REQUIRE(mesh_manager->num_volume_faces(2) == 12 * faces_per_square);
+    REQUIRE(mesh_manager->num_volume_faces(ipc) == 18 * faces_per_square);
 
     // make sure this mesh exercises reversed faces: at least one interface face
     // must have its MFEM Elem1 in volume 2
