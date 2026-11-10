@@ -304,7 +304,7 @@ struct MfemMeshElementFaceAccessor : public ElementFaceAccessor {
     switch (geom) {
       case VolumeElementType::TET: return 4;
       case VolumeElementType::HEX: return 6;
-      default: fatal_error("");
+      default: fatal_error("Element type not supported!");
     }
   }
 

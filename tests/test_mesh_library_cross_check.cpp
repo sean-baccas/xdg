@@ -245,17 +245,17 @@ TEST_CASE("Test Mesh Backend Cross-Check Tallies -- JEZEBEL")
     SKIP("Fewer than two mesh backends are available; skipping cross-check.");
   }
 
-  const auto& xdg_ref = test_fixtures[0].xdg;
-  auto ref_bounding_box = xdg_ref->mesh_manager()->global_bounding_box();
+  const auto& mesh_backend_ref = test_fixtures[0].xdg;
+  auto ref_bounding_box = mesh_backend_ref->mesh_manager()->global_bounding_box();
 
   // check that the global bounding box of the model and various model counts are the same
   for (size_t f = 1; f < test_fixtures.size(); f++) {
     const auto& xdg_other = test_fixtures[f].xdg;
     CAPTURE(test_fixtures[0].label(), test_fixtures[f].label());
 
-    REQUIRE(xdg_ref->mesh_manager()->num_vertices() == xdg_other->mesh_manager()->num_vertices());
-    REQUIRE(xdg_ref->mesh_manager()->num_volume_elements() == xdg_other->mesh_manager()->num_volume_elements());
-    REQUIRE(xdg_ref->mesh_manager()->num_volumes() == xdg_other->mesh_manager()->num_volumes());
+    REQUIRE(mesh_backend_ref->mesh_manager()->num_vertices() == xdg_other->mesh_manager()->num_vertices());
+    REQUIRE(mesh_backend_ref->mesh_manager()->num_volume_elements() == xdg_other->mesh_manager()->num_volume_elements());
+    REQUIRE(mesh_backend_ref->mesh_manager()->num_volumes() == xdg_other->mesh_manager()->num_volumes());
 
     auto other_bounding_box = xdg_other->mesh_manager()->global_bounding_box();
     REQUIRE_THAT(ref_bounding_box.min_x, Catch::Matchers::WithinAbs(other_bounding_box.min_x, 1e-6));
@@ -272,9 +272,9 @@ TEST_CASE("Test Mesh Backend Cross-Check Tallies -- JEZEBEL")
     Position start = ref_bounding_box.sample_location();
     Position end = ref_bounding_box.sample_location();
 
-    auto ref_element = xdg_ref->find_element(start);
-    auto ref_tracks = ref_element == ID_NONE ? decltype(xdg_ref->segments(start, end)){}
-                                             : xdg_ref->segments(start, end);
+    auto ref_element = mesh_backend_ref->find_element(start);
+    auto ref_tracks = ref_element == ID_NONE ? decltype(mesh_backend_ref->segments(start, end)){}
+                                             : mesh_backend_ref->segments(start, end);
 
     for (size_t f = 1; f < test_fixtures.size(); f++) {
       const auto& xdg_other = test_fixtures[f].xdg;
@@ -288,12 +288,12 @@ TEST_CASE("Test Mesh Backend Cross-Check Tallies -- JEZEBEL")
       REQUIRE(other_element != ID_NONE);
 
       // check element equivalence by index b/c IDs may be different depending on the library conventions
-      REQUIRE(xdg_ref->mesh_manager()->element_index(ref_element) == xdg_other->mesh_manager()->element_index(other_element));
+      REQUIRE(mesh_backend_ref->mesh_manager()->element_index(ref_element) == xdg_other->mesh_manager()->element_index(other_element));
 
       auto other_tracks = xdg_other->segments(start, end);
       REQUIRE(ref_tracks.size() == other_tracks.size());
       for (size_t j = 0; j < ref_tracks.size(); j++) {
-        REQUIRE(xdg_ref->mesh_manager()->element_index(ref_tracks[j].first) == xdg_other->mesh_manager()->element_index(other_tracks[j].first));
+        REQUIRE(mesh_backend_ref->mesh_manager()->element_index(ref_tracks[j].first) == xdg_other->mesh_manager()->element_index(other_tracks[j].first));
         REQUIRE_THAT(ref_tracks[j].second, Catch::Matchers::WithinAbs(other_tracks[j].second, 1e-10));
       }
     }
