@@ -75,6 +75,12 @@ XDGConfig::libmesh_init() {
     return config::external_libmesh_init;
   }
 
+  // The host application (e.g. Cardinal) owns libMesh but only gave us
+  // its communicator, so avoid creating a second LibMeshInit
+  if (config::external_libmesh_comm != nullptr) {
+    return nullptr;
+  }
+
   if (!config::xdg_libmesh_init) {
     int argc = 2;
     // avoid heap corruption: ~LibMeshInit runs at exit, after libMesh's thread_local output buffers are gone
